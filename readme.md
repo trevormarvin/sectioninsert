@@ -1,10 +1,10 @@
-# MPASM preprocessor compiler exntension
+# Pre-preprocessor compiler extension
 
 ## The Necessity which is the Mother of this Invention
 
 (First person in the perspect of the primary/original person writing this forward.)  
 
-I write microcontroller based devices in assembly.  I've written enough variations based on the same system that I've built a framework for my system.  My framework is essentially a little operating system, but very spartan and requires modifications to my framework files everytime I build a new device on my framework.  
+I write microcontroller based devices in assembly, primarily in the Microchip PIC18 line of microcontrollers.  I've written enough variations based on the same system that I've built a framework for my system.  My framework is essentially a little operating system, but very spartan and requires modifications to my framework files everytime I build a new device on my framework.  
 
 For any new module that I base on my existing framework, there are sections of code that need to inserted into various places in what is essentially the operating system sections.  Currently, my process is to select a code word for the new module and then modify all the framework files to include macros related to the sections of inserted of code when the project's code word is _defined_.  
 
@@ -18,7 +18,7 @@ To steamline and improve scaleability of this process, I propose the following p
 
 Within a library or framework file, there is a preprocessor directive of a named "#SECTION".  Its arguments are the name of the section, and then optional arguments that are passed to the macros that will be inserted at that point.  
 
-Before the #SECTION directive must be defined pieces to insert into that section.  This is the "#INSERT" directive.  The #INSERT directive is given arguments of a macro to insert, the name of the SECTION to insert it to, and optionally an integer number to affect the priority ordering of this INSERT related to other INSERTs destined for the same SECTION.  Lower numbers have a higher priority (thus are inserted first), and there is no defined method for determining priority on sections given the same priority value.  
+Before the "#SECTION" directive, there must be defined pieces to insert into that section.  (If not, the 'section' is left empty.)  This is the "#INSERT" directive.  The INSERT directive is given arguments of a macro to insert, the name of the SECTION to insert it to, and optionally an integer number to affect the priority ordering of this INSERT related to other INSERTs destined for the same SECTION.  Lower numbers have a higher priority (thus are inserted first), and there is no defined method for determining priority on sections given the same priority value.  
 
 All INSERT directives must come before the related SECTION directive.  It will be an error to declare an INSERT directive after its related SECTION directive.  After transversing the entire project, it is highly suggested that it be an error to have INSERT directives that have not been inserted into a SECTION.  
 

@@ -89,10 +89,10 @@ def parse_file(infile, outfile, filename):
       print('dest define value for: ' + pieces[1], file=sys.stderr) ##############
       continue
     
-    if pieces[0].lower() == '#insertmacro':
+    if pieces[0].lower() == '#insert':
       if pieces[2].lower() in sections:
         if sections[pieces[2].lower()] is None:
-          print('INSERTMACRO after INSERTSECTION', file=sys.stderr) ########################
+          print('INSERT after SECTION', file=sys.stderr) ########################
           sys.exit(1)
       else:
         sections[pieces[2].lower()]= []
@@ -101,15 +101,15 @@ def parse_file(infile, outfile, filename):
       else:
         priority = 100.0
       heapq.push(sections[pieces[2].lower()], (priority, pieces[1]))
-      print('found INSERTMACRO: ' + pieces[2] + ' ' + pieces[1], \
+      print('found INSERT: ' + pieces[2] + ' ' + pieces[1], \
             file=sys.stderr) ########################
       continue
     
-    if pieces[0].lower() == '#insertsection':
+    if pieces[0].lower() == '#section':
       if not pieces[1].lower() in sections:
-        print('WARNING: no sections for INSERTSECTION', file=sys.stderr)
+        print('WARNING: no sections for SECTION directive', file=sys.stderr)
       else:
-        print('found INSERTSECTION: ' + pieces[1], \
+        print('found SECTION directive: ' + pieces[1], \
               file=sys.stderr) ########################
         for priority, macro in heapq.heappop(pieces[1].lower()):
           outfile.write('\t' + macro + '\n')
@@ -153,9 +153,9 @@ parse_file(infile, outfile, sys.argv[1])
 outfile.close()
 
 # -----------------------------------------------------------------------------
-# pass output to MPasm
+# pass generated output to assembler program
 
-
+####### DO STUFF HERE
 
 # -----------------------------------------------------------------------------
   
