@@ -20,7 +20,10 @@ def parse_file(infile, outfile, filename):
   
   for line in infile.readlines():
     
-    pieces = line.split()
+    if ';' in line:
+      pieces = line.split(';', 1)[0].split()
+    else:
+      pieces = line.split()
     
     if len(pieces) == 0:
       outfile.write(line)
@@ -102,7 +105,6 @@ def parse_file(infile, outfile, filename):
       recfn = pieces[1]
       if recfn[:1] == '<':
         recfn = recfn[1:-1]
-      print('recursing to include file: ' + recfn, file=sys.stderr) ########################
       try:
         recfile = open(recfn, 'r')
       except Exception as msg:
@@ -110,6 +112,21 @@ def parse_file(infile, outfile, filename):
                       recfn + '\n')
         outfile.write(line)
         continue
+      # scan the file for "INSERT" and "SECTION" directives, skip if none are in there
+      for line2 in recfile.readlines():
+        pieces2 = line2.split()
+        if len(pieces2) == 0:
+          continue
+        if pieces2[0].lower() in ['#insert', '#section', ]:
+          break
+      else:
+        print('skipping expanding include file: ' + recfn, file=sys.stderr) ########################
+        outfile.write('; PRE-PREPROCESSOR, skipping expanding included file: ' \
+                      + recfn + '\n')
+        outfile.write(line)
+        continue
+      print('recursing to include file: ' + recfn, file=sys.stderr) ########################
+      recfile.seek(0)
       outfile.write('; PRE-PREPROCESSOR, including: ' + recfn + '\n')
       parse_file(recfile, outfile, recfn)
       recfile.close()
@@ -186,6 +203,9 @@ ifstack = []
 parse_file(infile, outfile, sys.argv[1])
 
 outfile.close()
+
+print('DEBUG, defines: ' + str(defines), \
+      file=sys.stderr) ########################
 
 # -----------------------------------------------------------------------------
 # pass generated output to assembler program
