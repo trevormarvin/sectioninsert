@@ -18,8 +18,6 @@ sections = {}
 
 def parse_file(infile, outfile, filename):
   
-  ifstack = []
-  
   for line in infile.readlines():
     
     pieces = line.split()
@@ -69,16 +67,11 @@ def parse_file(infile, outfile, filename):
         ifstack.append(True)
         print('IFDEF True declaration: ' + line.strip(), \
               file=sys.stderr) ########################
+      outfile.write(line)
+      continue
     
     if pieces[0].lower() == '#if':
       ifstack.append(None)
-    
-    if len(ifstack) > 0 and False in ifstack:
-      # conditional says to not compile it, so look for special preprocessor
-      # directives to strip out
-      if not pieces[0].lower() in ['#insertmacro', '#insertsection', ]:
-        outfile.write(line)
-      continue
     
     if pieces[0].lower() == '#define':
       if len(pieces) > 2:
@@ -88,32 +81,14 @@ def parse_file(infile, outfile, filename):
       outfile.write(line)
       print('dest define value for: ' + pieces[1], file=sys.stderr) ##############
       continue
-    
-    if pieces[0].lower() == '#insert':
-      if pieces[2].lower() in sections:
-        if sections[pieces[2].lower()] is None:
-          print('INSERT after SECTION', file=sys.stderr) ########################
-          sys.exit(1)
+
+    if pieces[0].lower() == '#undefine':
+      if pieces[1].lower() in defines:
+        del defines[pieces[1].lower()]
+        print('undefine value for: ' + pieces[1], file=sys.stderr) ##############
       else:
-        sections[pieces[2].lower()]= []
-      if len(pieces) > 3:
-        priority = float(pieces[3])
-      else:
-        priority = 100.0
-      heapq.push(sections[pieces[2].lower()], (priority, pieces[1]))
-      print('found INSERT: ' + pieces[2] + ' ' + pieces[1], \
-            file=sys.stderr) ########################
-      continue
-    
-    if pieces[0].lower() == '#section':
-      if not pieces[1].lower() in sections:
-        print('WARNING: no sections for SECTION directive', file=sys.stderr)
-      else:
-        print('found SECTION directive: ' + pieces[1], \
-              file=sys.stderr) ########################
-        for priority, macro in heapq.heappop(pieces[1].lower()):
-          outfile.write('\t' + macro + '\n')
-      sections[pieces[1].lower()] = None
+        print('attempted undefine on undefined value: ' + pieces[1], file=sys.stderr) ##############
+      outfile.write(line)
       continue
     
     if pieces[0].lower() == '#include':
@@ -124,11 +99,60 @@ def parse_file(infile, outfile, filename):
       try:
         recfile = open(recfn, 'r')
       except Exception as msg:
-        print('failed to open file to recurse to: ' + recfn, file=sys.stderr)
-        print('ERROR: ' + str(msg), file=sys.stderr)
-        sys.exit(1)
+        outfile.write('; PRE-PREPROCESSOR, failed to open include file: ' + recfn + '\n')
+        outfile.write(line)
+        continue
+      outfile.write('; PRE-PREPROCESSOR, including: ' + recfn + '\n')
       parse_file(recfile, outfile, recfn)
+      recfile.close()
+      outfile.write('\n')
+      continue
     
+    if pieces[0].lower() in ['#insert', '#section', ]:
+      if len(ifstack) > 0 and False in ifstack:
+        # conditional says to not compile it, so look for special preprocessor
+        # directives to strip out
+        outfile.write('; PRE-PREPROCESSOR, skipping special directive due to conditional stack\n')
+        outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
+        outfile.write('; PRE-PREPROCESSOR: ' + str(ifstack) + '\n')
+        continue
+    
+      elif pieces[0].lower() == '#insert':
+        if pieces[2].lower() in sections:
+          if sections[pieces[2].lower()] is None:
+            print('INSERT after SECTION', file=sys.stderr) ########################
+            sys.exit(1)
+        else:
+          sections[pieces[2].lower()] = []
+        if len(pieces) > 3:
+          priority = float(pieces[3])
+        else:
+          priority = 100.0
+        heapq.push(sections[pieces[2].lower()], (priority, pieces[1]))
+        outfile.write('; PRE-PREPROCESSOR, found INSERT directive\n')
+        outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
+        print('found INSERT: ' + pieces[2] + ' ' + pieces[1], \
+              file=sys.stderr) ########################
+        continue
+      
+      elif pieces[0].lower() == '#section':
+        if not pieces[1].lower() in sections:
+          print('WARNING: no sections for SECTION directive', file=sys.stderr)
+          outfile.write('; PRE-PREPROCESSOR, WARNING, nothing found for SECTION directive\n')
+          outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
+        else:
+          outfile.write('; PRE-PREPROCESSOR, found SECTION directive\n')
+          outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
+          print('found SECTION directive: ' + pieces[1], \
+                file=sys.stderr) ########################
+          for priority, macro in heapq.heappop(pieces[1].lower()):
+            outfile.write('\t' + macro + '\n')
+        sections[pieces[1].lower()] = None
+        continue
+    
+    outfile.write(line)
+    continue
+  
   infile.close()
     
     
@@ -142,11 +166,12 @@ except Exception as msg:
   sys.exit(1)
 
 try:
-  outfile = open('pre_processed_file.asm', 'w')
+  outfile = open('_pre_processed_file.asm', 'w')
 except Exception as msg:
   print("failed to create output file, error: " + str(msg))
   sys.exit(1)
 
+ifstack = []
 
 parse_file(infile, outfile, sys.argv[1])
 
