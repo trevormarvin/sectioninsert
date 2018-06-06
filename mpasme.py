@@ -28,7 +28,7 @@ def parse_file(infile, outfile, filename):
     
     if pieces[0].lower() == '#endif':
       if len(ifstack) == 0:
-        print('unmatched ENDIF declaration', file=sys.stderr)
+        print('unmatched ENDIF declaration in ' + filename, file=sys.stderr)
         sys.exit(1)
       ifstack.pop()
       outfile.write(line)
@@ -37,7 +37,7 @@ def parse_file(infile, outfile, filename):
 
     if pieces[0].lower() == '#else':
       if len(ifstack) == 0:
-        print('unmatched ELSE declaration', file=sys.stderr)
+        print('unmatched ELSE declaration in ' + filename, file=sys.stderr)
         sys.exit(1)
       index = len(ifstack) - 1
       print('ELSE declaration', file=sys.stderr) ########################
@@ -72,6 +72,7 @@ def parse_file(infile, outfile, filename):
     
     if pieces[0].lower() == '#if':
       ifstack.append(None)
+      continue
     
     if pieces[0].lower() == '#define':
       if len(pieces) > 2:
@@ -92,6 +93,12 @@ def parse_file(infile, outfile, filename):
       continue
     
     if pieces[0].lower() == '#include':
+      if len(ifstack) > 0 and False in ifstack:
+        # conditional says to not include it
+        outfile.write('; PRE-PREPROCESSOR, skipping include directive due to \
+                      condition stack\n')
+        outfile.write(line)
+        continue
       recfn = pieces[1]
       if recfn[:1] == '<':
         recfn = recfn[1:-1]
@@ -99,7 +106,8 @@ def parse_file(infile, outfile, filename):
       try:
         recfile = open(recfn, 'r')
       except Exception as msg:
-        outfile.write('; PRE-PREPROCESSOR, failed to open include file: ' + recfn + '\n')
+        outfile.write('; PRE-PREPROCESSOR, failed to open include file: ' + \
+                      recfn + '\n')
         outfile.write(line)
         continue
       outfile.write('; PRE-PREPROCESSOR, including: ' + recfn + '\n')
@@ -112,7 +120,8 @@ def parse_file(infile, outfile, filename):
       if len(ifstack) > 0 and False in ifstack:
         # conditional says to not compile it, so look for special preprocessor
         # directives to strip out
-        outfile.write('; PRE-PREPROCESSOR, skipping special directive due to conditional stack\n')
+        outfile.write('; PRE-PREPROCESSOR, skipping special directive due to \
+                      condition stack\n')
         outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
         outfile.write('; PRE-PREPROCESSOR: ' + str(ifstack) + '\n')
         continue
@@ -138,7 +147,8 @@ def parse_file(infile, outfile, filename):
       elif pieces[0].lower() == '#section':
         if not pieces[1].lower() in sections:
           print('WARNING: no sections for SECTION directive', file=sys.stderr)
-          outfile.write('; PRE-PREPROCESSOR, WARNING, nothing found for SECTION directive\n')
+          outfile.write('; PRE-PREPROCESSOR, WARNING, nothing found for \
+                        SECTION directive\n')
           outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
         else:
           outfile.write('; PRE-PREPROCESSOR, found SECTION directive\n')
