@@ -110,6 +110,7 @@ def parse_file(infile, outfile, filename):
       except Exception as msg:
         outfile.write('; PRE-PREPROCESSOR, failed to open include file: ' + \
                       recfn + '\n')
+        print('failed to open include file: ' + recfn, file=sys.stderr) ########################
         outfile.write(line)
         continue
       # scan the file for "INSERT" and "SECTION" directives, skip if none are in there
@@ -146,6 +147,7 @@ def parse_file(infile, outfile, filename):
       elif pieces[0].lower() == '#insert':
         if pieces[2].lower() in sections:
           if sections[pieces[2].lower()] is None:
+            outfile.write('; PRE-PREPROCESSOR, found INSERT directive after SECTION directive\n')
             print('INSERT after SECTION', file=sys.stderr) ########################
             sys.exit(1)
         else:
@@ -154,7 +156,7 @@ def parse_file(infile, outfile, filename):
           priority = float(pieces[3])
         else:
           priority = 100.0
-        heapq.push(sections[pieces[2].lower()], (priority, pieces[1]))
+        heapq.heappush(sections[pieces[2].lower()], (priority, pieces[1]))
         outfile.write('; PRE-PREPROCESSOR, found INSERT directive\n')
         outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
         print('found INSERT: ' + pieces[2] + ' ' + pieces[1], \
@@ -163,16 +165,18 @@ def parse_file(infile, outfile, filename):
       
       elif pieces[0].lower() == '#section':
         if not pieces[1].lower() in sections:
-          print('WARNING: no sections for SECTION directive', file=sys.stderr)
+          print('WARNING: no sections for SECTION directive: ' + \
+                pieces[1].lower(), file=sys.stderr)
           outfile.write('; PRE-PREPROCESSOR, WARNING, nothing found for \
-                        SECTION directive\n')
+                        SECTION directive: ' + pieces[1].lower() + '\n')
           outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
         else:
           outfile.write('; PRE-PREPROCESSOR, found SECTION directive\n')
           outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
           print('found SECTION directive: ' + pieces[1], \
                 file=sys.stderr) ########################
-          for priority, macro in heapq.heappop(pieces[1].lower()):
+          while sections[pieces[1].lower()]:
+            macro = heapq.heappop(sections[pieces[1].lower()])[1]
             outfile.write('\t' + macro + '\n')
         sections[pieces[1].lower()] = None
         continue
