@@ -4,9 +4,12 @@
 Microchip MPasm assembler preprocessor.
 c2018  Trevor Marvin
 
+Edit this file to contain paths to your Mpasm binary below.
 
-Edit this file to contain paths to your Mpasm and Mplink binaries below.
-
+The way this file is set up to run, rename the original 'mpasmx' program to
+something else, put this file in its place or link to it, and configure this
+program to know where the original file is.  It will run before MPASM and then
+chain to it.
 '''
 
 
@@ -14,17 +17,20 @@ import sys, heapq, subprocess, time
 
 defines = {}
 sections = {}
-processor = None   # capture the type of processor to send to the linker
-mpasm_prog = '/opt/microchip/mplabx/v4.15/mpasmx/mpasmx'
-mplink_prog = '/opt/microchip/mplabx/v4.15/mpasmx/mplink'
+mpasm_prog = '/opt/microchip/mplabx/v4.20/mpasmx/mpasmx_orig'
 interim_file = '_pre_processed_file.asm'
+inputfilename = None
 
+for entry in sys.argv[1:]:
+  if entry[:1] == '-':
+    continue     # skip options, but will pass to MPASM later
+  inputfilename = entry
+  break
 
 # -----------------------------------------------------------------------------
 
 def parse_file(infile, outfile, filename):
   
-  global processor
   count = -1
   
   for line in infile.readlines():
@@ -111,6 +117,7 @@ def parse_file(infile, outfile, filename):
         outfile.write('; PRE-PREPROCESSOR, failed to open include file: ' + \
                       recfn + '\n')
         outfile.write(line)
+        print('PRE WARNING: failed to open include file: ' + recfn, file=sys.stderr)
         continue
       # scan the file for "INSERT" and "SECTION" directives, skip if none are in there
       for line2 in recfile.readlines():
@@ -159,7 +166,7 @@ def parse_file(infile, outfile, filename):
       
       elif pieces[0].lower() == '#section':
         if not pieces[1].lower() in sections:
-          print('WARNING: no sections for SECTION directive: ' + \
+          print('PRE WARNING: no sections for SECTION directive: ' + \
                 pieces[1].lower(), file=sys.stderr)
           outfile.write('; PRE-PREPROCESSOR, WARNING, nothing found for \
                         SECTION directive: ' + pieces[1].lower() + '\n')
@@ -173,9 +180,6 @@ def parse_file(infile, outfile, filename):
         sections[pieces[1].lower()] = None
         continue
     
-    if not processor and pieces[0].lower() == 'processor':
-      processor = pieces[1]
-    
     outfile.write(line)
     continue
   
@@ -185,16 +189,25 @@ def parse_file(infile, outfile, filename):
     
 # -----------------------------------------------------------------------------
 
-try:
-  infile = open(sys.argv[1], 'r')
-except Exception as msg:
-  print("failed to import file, error: " + str(msg))
+if not inputfilename:
+  print("no file specified")
   sys.exit(1)
 
-if '.' in sys.argv[1]:
-  basename = sys.argv[1].split('.')[0]
+# the filename is coming in with quotes on it
+if inputfilename[:1] == '"':
+  inputfilename = inputfilename[1:-1]
+
+try:
+  infile = open(inputfilename, 'r')
+except Exception as msg:
+  print("failed to import file, error: " + str(msg))
+  print("failed to import file: " + str(inputfilename))
+  sys.exit(1)
+
+if '.' in inputfilename:
+  basename = inputfilename.split('.')[0]
 else:
-  basename = sys.argv[1]
+  basename = inputfilename
 
 try:
   outfile = open(interim_file, 'w')
@@ -214,17 +227,18 @@ parse_file(infile, outfile, sys.argv[1])
 
 outfile.close()
 
+print('PRE INFO: pre-preprocessor completed, chaining to assembler', \
+      file=sys.stderr)
+
 # -----------------------------------------------------------------------------
 # pass generated output to assembler program
 if mpasm_prog:
 
   args = []
   args.append(mpasm_prog)
-  args.append('-e' + basename + '.ERR')
-  args.append('-l' + basename + '.LST')
-  args.append('-o' + basename + '.o')
-  if processor:
-    args.append('-p' + processor)
+  for entry in sys.argv[1:]:
+    if entry[:1] == '-':
+      args.append(entry)
   args.append(interim_file)
   
   proc = subprocess.Popen(args)
@@ -235,32 +249,6 @@ if mpasm_prog:
   if proc.poll() != 0:
     print('MPASM returned non-zero: ' + str(proc.poll()), file=sys.stderr)
     sys.exit(proc.poll())
-
-else:
-  sys.exit(0)
-
-# -----------------------------------------------------------------------------
-# pass generated output to linker program
-if mplink_prog:
-  
-  args = []
-  args.append(mplink_prog)
-  if processor:
-    args.append('-p' + processor)
-  args.append('-w')
-  args.append('-m' + basename + '.map')
-  args.append('-o' + basename + '.cof')
-  args.append(basename + '.o')
-  
-  proc = subprocess.Popen(args)
-  
-  while proc.poll() is None:
-    time.sleep(0.5)
-  
-  if proc.poll() != 0:
-    print('MPLINK returned non-zero: ' + str(proc.poll()), file=sys.stderr)
-    sys.exit(proc.poll())
-
 
 else:
   sys.exit(0)
