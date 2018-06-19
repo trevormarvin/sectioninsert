@@ -2,23 +2,33 @@
 
 '''
 Microchip MPasm assembler preprocessor.
+c2018  Trevor Marvin
 
+
+Edit this file to contain paths to your Mpasm and Mplink binaries below.
 
 '''
 
 
-import sys, heapq
-
-print(sys.argv)  ####################
+import sys, heapq, subprocess, time
 
 defines = {}
 sections = {}
+processor = None   # capture the type of processor to send to the linker
+mpasm_prog = '/opt/microchip/mplabx/v4.15/mpasmx/mpasmx'
+mplink_prog = '/opt/microchip/mplabx/v4.15/mpasmx/mplink'
+interim_file = '_pre_processed_file.asm'
+
 
 # -----------------------------------------------------------------------------
 
 def parse_file(infile, outfile, filename):
   
+  global processor
+  count = -1
+  
   for line in infile.readlines():
+    count += 1
     
     if ';' in line:
       pieces = line.split(';', 1)[0].split()
@@ -31,19 +41,21 @@ def parse_file(infile, outfile, filename):
     
     if pieces[0].lower() == '#endif':
       if len(ifstack) == 0:
-        print('unmatched ENDIF declaration in ' + filename, file=sys.stderr)
+        print('unmatched ENDIF directive in ' + filename, file=sys.stderr)
+        errfile.write('unmatched ENDIF directive in file ' + filename + \
+                      ' at line ' + str(count) + '\n')
         sys.exit(1)
       ifstack.pop()
       outfile.write(line)
-      print('ENDIF declaration', file=sys.stderr) ########################
       continue
 
     if pieces[0].lower() == '#else':
       if len(ifstack) == 0:
-        print('unmatched ELSE declaration in ' + filename, file=sys.stderr)
+        print('unmatched ELSE directive in ' + filename, file=sys.stderr)
+        errfile.write('unmatched ELSE directive in file ' + filename + \
+                      ' at line ' + str(count) + '\n')
         sys.exit(1)
       index = len(ifstack) - 1
-      print('ELSE declaration', file=sys.stderr) ########################
       if ifstack[index] is True:
         ifstack[index] = False
       elif ifstack[index] is False:
@@ -52,24 +64,16 @@ def parse_file(infile, outfile, filename):
     if pieces[0].lower() == '#ifdef':
       if pieces[1].lower() in defines:
         ifstack.append(True)
-        print('IFDEF True declaration: ' + line.strip(), \
-              file=sys.stderr) ########################
       else:
         ifstack.append(False)
-        print('IFDEF False declaration: ' + line.strip(), \
-              file=sys.stderr) ########################
       outfile.write(line)
       continue
     
     if pieces[0].lower() == '#ifndef':
       if pieces[1].lower() in defines:
         ifstack.append(False)
-        print('IFNDEF False declaration: ' + line.strip(), \
-              file=sys.stderr) ########################
       else:
         ifstack.append(True)
-        print('IFDEF True declaration: ' + line.strip(), \
-              file=sys.stderr) ########################
       outfile.write(line)
       continue
     
@@ -83,15 +87,11 @@ def parse_file(infile, outfile, filename):
       else:
         defines[pieces[1].lower()] = None
       outfile.write(line)
-      print('dest define value for: ' + pieces[1], file=sys.stderr) ##############
       continue
 
     if pieces[0].lower() == '#undefine':
       if pieces[1].lower() in defines:
         del defines[pieces[1].lower()]
-        print('undefine value for: ' + pieces[1], file=sys.stderr) ##############
-      else:
-        print('attempted undefine on undefined value: ' + pieces[1], file=sys.stderr) ##############
       outfile.write(line)
       continue
     
@@ -110,7 +110,6 @@ def parse_file(infile, outfile, filename):
       except Exception as msg:
         outfile.write('; PRE-PREPROCESSOR, failed to open include file: ' + \
                       recfn + '\n')
-        print('failed to open include file: ' + recfn, file=sys.stderr) ########################
         outfile.write(line)
         continue
       # scan the file for "INSERT" and "SECTION" directives, skip if none are in there
@@ -121,12 +120,10 @@ def parse_file(infile, outfile, filename):
         if pieces2[0].lower() in ['#insert', '#section', ]:
           break
       else:
-        print('skipping expanding include file: ' + recfn, file=sys.stderr) ########################
         outfile.write('; PRE-PREPROCESSOR, skipping expanding included file: ' \
                       + recfn + '\n')
         outfile.write(line)
         continue
-      print('recursing to include file: ' + recfn, file=sys.stderr) ########################
       recfile.seek(0)
       outfile.write('; PRE-PREPROCESSOR, including: ' + recfn + '\n')
       parse_file(recfile, outfile, recfn)
@@ -148,7 +145,6 @@ def parse_file(infile, outfile, filename):
         if pieces[2].lower() in sections:
           if sections[pieces[2].lower()] is None:
             outfile.write('; PRE-PREPROCESSOR, found INSERT directive after SECTION directive\n')
-            print('INSERT after SECTION', file=sys.stderr) ########################
             sys.exit(1)
         else:
           sections[pieces[2].lower()] = []
@@ -159,8 +155,6 @@ def parse_file(infile, outfile, filename):
         heapq.heappush(sections[pieces[2].lower()], (priority, pieces[1]))
         outfile.write('; PRE-PREPROCESSOR, found INSERT directive\n')
         outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
-        print('found INSERT: ' + pieces[2] + ' ' + pieces[1], \
-              file=sys.stderr) ########################
         continue
       
       elif pieces[0].lower() == '#section':
@@ -173,13 +167,14 @@ def parse_file(infile, outfile, filename):
         else:
           outfile.write('; PRE-PREPROCESSOR, found SECTION directive\n')
           outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
-          print('found SECTION directive: ' + pieces[1], \
-                file=sys.stderr) ########################
           while sections[pieces[1].lower()]:
             macro = heapq.heappop(sections[pieces[1].lower()])[1]
             outfile.write('\t' + macro + '\n')
         sections[pieces[1].lower()] = None
         continue
+    
+    if not processor and pieces[0].lower() == 'processor':
+      processor = pieces[1]
     
     outfile.write(line)
     continue
@@ -196,10 +191,21 @@ except Exception as msg:
   print("failed to import file, error: " + str(msg))
   sys.exit(1)
 
+if '.' in sys.argv[1]:
+  basename = sys.argv[1].split('.')[0]
+else:
+  basename = sys.argv[1]
+
 try:
-  outfile = open('_pre_processed_file.asm', 'w')
+  outfile = open(interim_file, 'w')
 except Exception as msg:
   print("failed to create output file, error: " + str(msg))
+  sys.exit(1)
+
+try:
+  errfile = open(basename + '.pre.ERR', 'w')
+except Exception as msg:
+  print("failed to create error file, error: " + str(msg))
   sys.exit(1)
 
 ifstack = []
@@ -208,13 +214,55 @@ parse_file(infile, outfile, sys.argv[1])
 
 outfile.close()
 
-print('DEBUG, defines: ' + str(defines), \
-      file=sys.stderr) ########################
-
 # -----------------------------------------------------------------------------
 # pass generated output to assembler program
+if mpasm_prog:
 
-####### DO STUFF HERE
+  args = []
+  args.append(mpasm_prog)
+  args.append('-e' + basename + '.ERR')
+  args.append('-l' + basename + '.LST')
+  args.append('-o' + basename + '.o')
+  if processor:
+    args.append('-p' + processor)
+  args.append(interim_file)
+  
+  proc = subprocess.Popen(args)
+  
+  while proc.poll() is None:
+    time.sleep(0.5)
+  
+  if proc.poll() != 0:
+    print('MPASM returned non-zero: ' + str(proc.poll()), file=sys.stderr)
+    sys.exit(proc.poll())
+
+else:
+  sys.exit(0)
 
 # -----------------------------------------------------------------------------
+# pass generated output to linker program
+if mplink_prog:
+  
+  args = []
+  args.append(mplink_prog)
+  if processor:
+    args.append('-p' + processor)
+  args.append('-w')
+  args.append('-m' + basename + '.map')
+  args.append('-o' + basename + '.cof')
+  args.append(basename + '.o')
+  
+  proc = subprocess.Popen(args)
+  
+  while proc.poll() is None:
+    time.sleep(0.5)
+  
+  if proc.poll() != 0:
+    print('MPLINK returned non-zero: ' + str(proc.poll()), file=sys.stderr)
+    sys.exit(proc.poll())
+
+
+else:
+  sys.exit(0)
+
   

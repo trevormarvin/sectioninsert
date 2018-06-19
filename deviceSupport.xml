@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<mp:deviceSupport xmlns:mp="http://crownking/mplab" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://crownking/mplab%20mplab/deviceSupport" >
+
+<mp:family mp:family="16c5x" />
+<mp:family mp:family="16x" />
+<mp:family mp:family="18x" />
+
+</mp:deviceSupport>
