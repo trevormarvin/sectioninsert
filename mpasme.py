@@ -105,8 +105,7 @@ def parse_file(infile, outfile, filename):
     if keyword == '#include':
       if len(ifstack) > 0 and False in ifstack:
         # conditional says to not include it
-        outfile.write('; PRE-PREPROCESSOR, skipping include directive due to \
-                      condition stack\n')
+        outfile.write('; PRE-PREPROCESSOR, skipping include directive due to condition stack\n')
         outfile.write(line)
         continue
       recfn = pieces[1]
@@ -154,37 +153,38 @@ def parse_file(infile, outfile, filename):
         continue
     
       elif keyword == '#insert':
+        # form of: #INSERT (macro_name) (section_name) [priority]
         sectionName = pieces[2].lower()
         if sectionName in sections:
-          if sections[sectionName is None:
+          if sections[sectionName] is None:
             outfile.write('; PRE-PREPROCESSOR, found INSERT directive after SECTION directive\n')
             sys.exit(1)
         else:
-          sections[sectionName = []
+          sections[sectionName] = []
         if len(pieces) > 3:
           priority = float(pieces[3])
         else:
           priority = 100.0
-        heapq.heappush(sections[sectionName] (priority, pieces[1]))
+        heapq.heappush(sections[sectionName], (priority, pieces[1]))
         outfile.write('; PRE-PREPROCESSOR, found INSERT directive\n')
         outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
         continue
       
       elif keyword == '#section':
+        # form of: #SECTION (section_name) [macro_args] [...]
         sectionName = pieces[1].lower()
         if not sectionName in sections:
           print('PRE WARNING: no sections for SECTION directive: ' + \
                 sectionName, file=sys.stderr)
-          outfile.write('; PRE-PREPROCESSOR, WARNING, nothing found for \
-                        SECTION directive: ' + sectionName + '\n')
+          outfile.write('; PRE-PREPROCESSOR, WARNING, nothing found for SECTION directive\n')
           outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
         else:
           outfile.write('; PRE-PREPROCESSOR, found SECTION directive\n')
           outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
           if len(pieces) > 2:
-            macro_args = " " + ' '.join(pieces[2:])
+            macro_args = ' ' + ' '.join(pieces[2:])
           else:
-            macro_args = ""
+            macro_args = ''
           while sections[sectionName]:
             macro = heapq.heappop(sections[sectionName])[1]
             outfile.write('\t' + macro + macro_args + '\n')
