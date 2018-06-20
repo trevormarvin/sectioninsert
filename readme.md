@@ -40,7 +40,7 @@ custom_project_isr_section macro portname
 #INSERT custom_project_isr_section framework_isr_section 5
 ```
 
-The above defines a macro "custom_project_isr_section" which will be inserted at a section named "framework_isr_section".  At this section, the macro name will be inserted into the code.  If there are other macros inserted into the same section, this one will have a priority of '5'.
+The above defines a macro "custom_project_isr_section" which will be inserted at a section named "framework_isr_section".  At this section, the macro name will be inserted into the code.  If there are other macros inserted into the same section, this one will have a priority of '5'.  The lower number has a higher priority and will be stacked first in the SECTION section.  The default priority is '100'.
 
 ```
 #SECTION framework_isr_section LATA
@@ -54,10 +54,19 @@ The above declaration will cause the pre-preprocessor to replace it with the mac
 
 If there was more than one INSERT directive naming the same SECTION, multiple macro names will be placed there.  
 
+Thus, the general forms are:
+
+```
+#INSERT (macro_name) (section_name) [priority]
+#SECTION (section_name) [macro_arg [macro_arg] [...]]
+```
+
 ## A "pre-preprocessor" program to handle this convention
 
 Until this convention can included in an official assembler, this project is to build a pre-preprocessor that interprets and replaces these directives so that the official assembler for any particular architecture can be used with this functionality.  
 
 This pre-preprocessor will need to interpret and execute most of the #DEFINE and #IFDEF directives because of their bearing on INSERT and SECTION directives.  
 
-Currently, this project converts the project and all its included files into a single temporary file that is passed to the main assembler.  This keeps it from modifying the main files, but make finding the original source code that causes errors raised by the final assembler harder to find.  
+Currently, this project converts the project and all its included files into a single temporary file that is passed to the main assembler.  This keeps it from modifying the main files, but makes finding the original source code that causes errors raised by the final assembler harder to find.  
+
+The current way of inserting this into your tool chain is to rename your original assembler program, provide a link from what its name was to this program, and then configure this program to know where your original assembler is so that it may chain to it.
