@@ -4,7 +4,7 @@
 Microchip MPasm assembler preprocessor.
 c2018  Trevor Marvin
 
-Edit this file to contain paths to your Mpasm binary below.
+Edit this file to contain paths to your MPasm binary below.
 
 The way this file is set up to run, rename the original 'mpasmx' program to
 something else, put this file in its place or link to it, and configure this
@@ -15,6 +15,7 @@ chain to it.
 
 import sys, heapq, subprocess, time
 
+ifstack = []
 defines = {}
 sections = {}
 mpasm_prog = '/opt/microchip/mplabx/v4.20/mpasmx/mpasmx_orig'
@@ -31,21 +32,21 @@ for entry in sys.argv[1:]:
 
 def parse_file(infile, outfile, filename):
   
-  count = -1
+  global ifstack, defines, sections
   
-  for line in infile.readlines():
-    count += 1
+  for count, line in enumerate(infile.readlines()):
     
     if ';' in line:
-      pieces = line.split(';', 1)[0].split()
+      pieces = line.split(';', 1)[0].split()  # remove comment
     else:
       pieces = line.split()
     
     if len(pieces) == 0:
       outfile.write(line)
       continue
+    keyword = pieces[0].lower()
     
-    if pieces[0].lower() == '#endif':
+    if keyword == '#endif':
       if len(ifstack) == 0:
         print('unmatched ENDIF directive in ' + filename, file=sys.stderr)
         errfile.write('unmatched ENDIF directive in file ' + filename + \
@@ -55,7 +56,7 @@ def parse_file(infile, outfile, filename):
       outfile.write(line)
       continue
 
-    if pieces[0].lower() == '#else':
+    if keyword == '#else':
       if len(ifstack) == 0:
         print('unmatched ELSE directive in ' + filename, file=sys.stderr)
         errfile.write('unmatched ELSE directive in file ' + filename + \
@@ -67,7 +68,7 @@ def parse_file(infile, outfile, filename):
       elif ifstack[index] is False:
         ifstack[index] = True
     
-    if pieces[0].lower() == '#ifdef':
+    if keyword == '#ifdef':
       if pieces[1].lower() in defines:
         ifstack.append(True)
       else:
@@ -75,7 +76,7 @@ def parse_file(infile, outfile, filename):
       outfile.write(line)
       continue
     
-    if pieces[0].lower() == '#ifndef':
+    if keyword == '#ifndef':
       if pieces[1].lower() in defines:
         ifstack.append(False)
       else:
@@ -83,11 +84,11 @@ def parse_file(infile, outfile, filename):
       outfile.write(line)
       continue
     
-    if pieces[0].lower() == '#if':
+    if keyword == '#if':
       ifstack.append(None)
       continue
     
-    if pieces[0].lower() == '#define':
+    if keyword == '#define':
       if len(pieces) > 2:
         defines[pieces[1].lower()] = pieces[2]
       else:
@@ -95,13 +96,13 @@ def parse_file(infile, outfile, filename):
       outfile.write(line)
       continue
 
-    if pieces[0].lower() == '#undefine':
+    if keyword == '#undefine':
       if pieces[1].lower() in defines:
         del defines[pieces[1].lower()]
       outfile.write(line)
       continue
     
-    if pieces[0].lower() == '#include':
+    if keyword == '#include':
       if len(ifstack) > 0 and False in ifstack:
         # conditional says to not include it
         outfile.write('; PRE-PREPROCESSOR, skipping include directive due to \
@@ -133,12 +134,16 @@ def parse_file(infile, outfile, filename):
         continue
       recfile.seek(0)
       outfile.write('; PRE-PREPROCESSOR, including: ' + recfn + '\n')
+      stack_balance = len(ifstack)
       parse_file(recfile, outfile, recfn)
+      if len(ifstack) != stack_balance:
+        print('PRE SERIOUS WARNING: conditional stack length altered after INCLUDE directive', \
+              file=sys.stderr)
       recfile.close()
       outfile.write('\n')
       continue
     
-    if pieces[0].lower() in ['#insert', '#section', ]:
+    if keyword in ['#insert', '#section', ]:
       if len(ifstack) > 0 and False in ifstack:
         # conditional says to not compile it, so look for special preprocessor
         # directives to strip out
@@ -148,36 +153,42 @@ def parse_file(infile, outfile, filename):
         outfile.write('; PRE-PREPROCESSOR: ' + str(ifstack) + '\n')
         continue
     
-      elif pieces[0].lower() == '#insert':
-        if pieces[2].lower() in sections:
-          if sections[pieces[2].lower()] is None:
+      elif keyword == '#insert':
+        sectionName = pieces[2].lower()
+        if sectionName in sections:
+          if sections[sectionName is None:
             outfile.write('; PRE-PREPROCESSOR, found INSERT directive after SECTION directive\n')
             sys.exit(1)
         else:
-          sections[pieces[2].lower()] = []
+          sections[sectionName = []
         if len(pieces) > 3:
           priority = float(pieces[3])
         else:
           priority = 100.0
-        heapq.heappush(sections[pieces[2].lower()], (priority, pieces[1]))
+        heapq.heappush(sections[sectionName] (priority, pieces[1]))
         outfile.write('; PRE-PREPROCESSOR, found INSERT directive\n')
         outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
         continue
       
-      elif pieces[0].lower() == '#section':
-        if not pieces[1].lower() in sections:
+      elif keyword == '#section':
+        sectionName = pieces[1].lower()
+        if not sectionName in sections:
           print('PRE WARNING: no sections for SECTION directive: ' + \
-                pieces[1].lower(), file=sys.stderr)
+                sectionName, file=sys.stderr)
           outfile.write('; PRE-PREPROCESSOR, WARNING, nothing found for \
-                        SECTION directive: ' + pieces[1].lower() + '\n')
+                        SECTION directive: ' + sectionName + '\n')
           outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
         else:
           outfile.write('; PRE-PREPROCESSOR, found SECTION directive\n')
           outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
-          while sections[pieces[1].lower()]:
-            macro = heapq.heappop(sections[pieces[1].lower()])[1]
-            outfile.write('\t' + macro + '\n')
-        sections[pieces[1].lower()] = None
+          if len(pieces) > 2:
+            macro_args = " " + ' '.join(pieces[2:])
+          else:
+            macro_args = ""
+          while sections[sectionName]:
+            macro = heapq.heappop(sections[sectionName])[1]
+            outfile.write('\t' + macro + macro_args + '\n')
+        sections[sectionName] = None
         continue
     
     outfile.write(line)
@@ -195,7 +206,7 @@ if not inputfilename:
 
 # the filename is coming in with quotes on it
 if inputfilename[:1] == '"':
-  inputfilename = inputfilename[1:-1]
+  inputfilename = inputfilename.strip('"')
 
 try:
   infile = open(inputfilename, 'r')
@@ -220,8 +231,6 @@ try:
 except Exception as msg:
   print("failed to create error file, error: " + str(msg))
   sys.exit(1)
-
-ifstack = []
 
 parse_file(infile, outfile, sys.argv[1])
 
