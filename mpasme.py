@@ -86,6 +86,7 @@ def parse_file(infile, outfile, filename):
     
     if keyword == '#if':
       ifstack.append(None)
+      outfile.write(line)
       continue
     
     if keyword == '#define':
@@ -235,6 +236,18 @@ except Exception as msg:
 parse_file(infile, outfile, sys.argv[1])
 
 outfile.close()
+
+bail = False
+for sectionName in sections:
+  if not sections[sectionName] is None:
+    bail = True
+    print('PRE ERROR: SECTION directive not found for section: ' + \
+          sectionName, file=sys.stderr)
+    while sections[sectionName]:
+      print('  macro to insert there: ' + \
+            heapq.heappop(sections[sectionName])[1], file=sys.stderr)
+if bail:
+  sys.exit(1)
 
 print('PRE INFO: pre-preprocessor completed, chaining to assembler', \
       file=sys.stderr)
