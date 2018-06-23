@@ -46,6 +46,16 @@ def parse_file(infile, outfile, filename):
       continue
     keyword = pieces[0].lower()
     
+    if keyword in ['#ifdef', '#ifndef', '#define', '#undefine', '#include',
+                   '#insert', '#section', ] and len(pieces) < 2:
+      print('PRE-PREPROCESSOR: not enough arguments in ' + filename + \
+            ' at line ' + str(count + 1), file=sys.stderr)
+      print('- line: ' + line, file=sys.stderr)
+      errfile.write('PRE-PREPROCESSOR: not enough arguments in ' + \
+                    filename + ' at line ' + str(count + 1) + '\n')
+      errfile.write('- line: ' + line + '\n')
+      sys.exit(1)
+    
     if keyword == '#endif':
       if len(ifstack) == 0:
         print('unmatched ENDIF directive in ' + filename, file=sys.stderr)
@@ -68,6 +78,11 @@ def parse_file(infile, outfile, filename):
       elif ifstack[index] is False:
         ifstack[index] = True
     
+    if keyword == '#if':
+      ifstack.append(None)
+      outfile.write(line)
+      continue
+    
     if keyword == '#ifdef':
       if pieces[1].lower() in defines:
         ifstack.append(True)
@@ -81,11 +96,6 @@ def parse_file(infile, outfile, filename):
         ifstack.append(False)
       else:
         ifstack.append(True)
-      outfile.write(line)
-      continue
-    
-    if keyword == '#if':
-      ifstack.append(None)
       outfile.write(line)
       continue
     
@@ -233,7 +243,7 @@ except Exception as msg:
   print("failed to create error file, error: " + str(msg))
   sys.exit(1)
 
-parse_file(infile, outfile, sys.argv[1])
+parse_file(infile, outfile, inputfilename)
 
 outfile.close()
 
