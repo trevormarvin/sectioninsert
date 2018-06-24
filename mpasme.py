@@ -164,7 +164,7 @@ def parse_file(infile, outfile, filename):
         continue
     
       elif keyword == '#insert':
-        # form of: #INSERT (macro_name) (section_name) [priority]
+        # form of: #INSERT (macro_name) (section_name) [priority] [macro_arg]...
         sectionName = pieces[2].lower()
         if sectionName in sections:
           if sections[sectionName] is None:
@@ -176,7 +176,11 @@ def parse_file(infile, outfile, filename):
           priority = float(pieces[3])
         else:
           priority = 100.0
-        heapq.heappush(sections[sectionName], (priority, pieces[1]))
+        if len(pieces) > 4:
+          macroargs = pieces[4:]
+        else:
+          macroargs = None
+        heapq.heappush(sections[sectionName], (priority, pieces[1], macroargs))
         outfile.write('; PRE-PREPROCESSOR, found INSERT directive\n')
         outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
         continue
@@ -197,8 +201,11 @@ def parse_file(infile, outfile, filename):
           else:
             macro_args = ''
           while sections[sectionName]:
-            macro = heapq.heappop(sections[sectionName])[1]
-            outfile.write('\t' + macro + macro_args + '\n')
+            macro, args = heapq.heappop(sections[sectionName])[1:]
+            if args:    # args taken from the INSERT directive
+              outfile.write('\t' + macro + ' ' + ', '.join(args) + '\n')
+            else:       # args taken from the SECTION directive
+              outfile.write('\t' + macro + macro_args + '\n')
         sections[sectionName] = None
         continue
     

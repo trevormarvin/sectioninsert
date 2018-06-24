@@ -54,10 +54,12 @@ The above declaration will cause the pre-preprocessor to replace it with the mac
 
 If there was more than one INSERT directive naming the same SECTION, multiple macro names will be placed there.  
 
+As an added option, the INSERT directive will take macro arguments after the priority value.  (Thus, you must specify the priority value.)  In such usage, the SECTION should not have arguments for the macro.  When expanded into the SECTION, the macro's arguments will come from the INSERT directive.  
+
 Thus, the general forms are:
 
 ```
-#INSERT (macro_name) (section_name) [priority]
+#INSERT (macro_name) (section_name) [priority] [macro_arg [macro_arg] [...]]
 #SECTION (section_name) [macro_arg [macro_arg] [...]]
 ```
 
