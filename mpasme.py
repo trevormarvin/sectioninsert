@@ -18,6 +18,7 @@ import sys, heapq, subprocess, time
 ifstack = []
 defines = {}
 sections = {}
+completed_sections = {}
 mpasm_prog = '/opt/microchip/mplabx/v4.20/mpasmx/mpasmx_orig'
 interim_file = '_pre_processed_file.asm'
 inputfilename = None
@@ -34,7 +35,13 @@ def parse_file(infile, outfile, filename):
   
   global ifstack, defines, sections
   
-  for count, line in enumerate(infile.readlines()):
+  #for count, line in enumerate(infile.readlines()):
+  count = -1
+  while True:
+    count += 1
+    line = infile.readline()
+    if len(line) == 0:
+      break
     
     if ';' in line:
       pieces = line.split(';', 1)[0].split()  # remove comment
@@ -147,20 +154,33 @@ def parse_file(infile, outfile, filename):
       stack_balance = len(ifstack)
       parse_file(recfile, outfile, recfn)
       if len(ifstack) != stack_balance:
-        print('PRE SERIOUS WARNING: conditional stack length altered after INCLUDE directive', \
-              file=sys.stderr)
+        print('PRE SERIOUS WARNING: conditional stack length altered after ' + \
+              'INCLUDE directive in file: ' + recfn, file=sys.stderr)
       recfile.close()
       outfile.write('\n')
       continue
     
-    if keyword in ['#insert', '#section', ]:
+    if keyword in ['#insert', '#section', '#generate', ]:
       if len(ifstack) > 0 and False in ifstack:
         # conditional says to not compile it, so look for special preprocessor
         # directives to strip out
-        outfile.write('; PRE-PREPROCESSOR, skipping special directive due to \
-                      condition stack\n')
-        outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
+        outfile.write('; PRE-PREPROCESSOR, skipping special directive due ' + \
+                      'to condition stack\n')
+        outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
         outfile.write('; PRE-PREPROCESSOR: ' + str(ifstack) + '\n')
+        if keyword == '#generate':
+          # need to get to the end of the GENERATE directive
+          while True:
+            line = infile.readline()
+            count += 1
+            if len(line) == 0:
+              outfile.write('; PRE-PREPROCESSOR ERROR: did not find end of' + \
+                            'GENERATE directive in file: ' + filename + '\n')
+              print('PRE-PREPROCESSOR ERROR: did not find end of' + \
+                    'GENERATE directive in file: ' + filename, file=sys.stderr)
+              sys.exit(1)
+            if line.lower()[:7] == '#endgen':
+              break
         continue
     
       elif keyword == '#insert':
@@ -168,7 +188,14 @@ def parse_file(infile, outfile, filename):
         sectionName = pieces[2].lower()
         if sectionName in sections:
           if sections[sectionName] is None:
-            outfile.write('; PRE-PREPROCESSOR, found INSERT directive after SECTION directive\n')
+            outfile.write('; PRE-PREPROCESSOR, found INSERT directive after' + \
+                          ' SECTION directive in: ' + filename + '\n')
+            outfile.write('; PRE-PREPROCESSOR, SECTION directive was in: ' + \
+                          completed_sections[sectionName] + '\n')
+            print('PRE-PREPROCESSOR ERROR: found INSERT directive after ' + \
+                  'SECTION directive in: ' + filename, file=sys.stderr)
+            print('PRE-PREPROCESSOR ERROR: SECTION directive was in: ' + \
+                  completed_sections[sectionName], file=sys.stderr)
             sys.exit(1)
         else:
           sections[sectionName] = []
@@ -182,7 +209,7 @@ def parse_file(infile, outfile, filename):
           macroargs = None
         heapq.heappush(sections[sectionName], (priority, pieces[1], macroargs))
         outfile.write('; PRE-PREPROCESSOR, found INSERT directive\n')
-        outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
+        outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
         continue
       
       elif keyword == '#section':
@@ -192,22 +219,79 @@ def parse_file(infile, outfile, filename):
           print('PRE WARNING: no sections for SECTION directive: ' + \
                 sectionName, file=sys.stderr)
           outfile.write('; PRE-PREPROCESSOR, WARNING, nothing found for SECTION directive\n')
-          outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
+          outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
         else:
           outfile.write('; PRE-PREPROCESSOR, found SECTION directive\n')
-          outfile.write('; PRE-PREPROCESSOR: ' + line + '\n')
+          outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
           if len(pieces) > 2:
             macro_args = ' ' + ' '.join(pieces[2:])
           else:
             macro_args = ''
           while sections[sectionName]:
             macro, args = heapq.heappop(sections[sectionName])[1:]
+            outfile.write('; PRE-PREPROCESSOR: section: ' + sectionName + \
+                          ' inserting macro: ' + macro + '\n')
             if args:    # args taken from the INSERT directive
               outfile.write('\t' + macro + ' ' + ', '.join(args) + '\n')
             else:       # args taken from the SECTION directive
               outfile.write('\t' + macro + macro_args + '\n')
         sections[sectionName] = None
+        completed_sections[sectionName] = filename
         continue
+    
+      if keyword == '#generate':
+        outfile.write('; PRE-PREPROCESSOR, found GENERATE directive\n')
+        outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
+        try:
+          fromcount = int(pieces[1])
+          tocount = int(pieces[2])
+        except:
+          outfile.write('; PRE-PREPROCESSOR ERROR: bad GENERATE directive count\n')
+          outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
+          print('PRE-PREPROCESSOR ERROR: bad GENERATE directive count', \
+                file=sys.stderr)
+          print('PRE-PREPROCESSOR: ' + line.strip(), file=sys.stderr)
+          sys.exit(1)
+        
+        # read for the section we're going to generate/loop
+        section = []
+        while True:
+          line = infile.readline()
+          count += 1
+          if len(line) == 0:
+            outfile.write('; PRE-PREPROCESSOR ERROR: did not find end of' + \
+                          'GENERATE directive in file: ' + filename + '\n')
+            print('PRE-PREPROCESSOR ERROR: did not find end of' + \
+                  'GENERATE directive in file: ' + filename, file=sys.stderr)
+            sys.exit(1)
+          if line.lower()[:7] == '#endgen':
+            break
+          section.append(line)
+        
+        for count2 in range(fromcount, tocount + 1):
+          for line in section:
+            line0 = line
+            while ('{' in line0) and ('}' in line0):
+              try:
+                line1, line2 = line0.split('{', 1)
+                line2, line3 = line2.split('}', 1)
+                if line2 == 'i':     # simple substitution for current count
+                  line0 = line1 + str(count2) + line3
+                else:
+                  raise Exception()
+              except:
+                outfile.write('; PRE-PREPROCESSOR ERROR: bad GENERATE data in: ' \
+                              + filename + '\n')
+                outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
+                print('PRE-PREPROCESSOR ERROR: bad GENERATE data in file: ' + \
+                      filename, file=sys.stderr)
+                print('PRE-PREPROCESSOR: line: ' + line.strip(), \
+                      file=sys.stderr)
+                sys.exit(1)
+            else:
+              outfile.write(line0)
+      
+      continue
     
     outfile.write(line)
     continue

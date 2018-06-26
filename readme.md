@@ -4,7 +4,7 @@
 
 (First person in the perspect of the primary/original person writing this forward.)  
 
-I write microcontroller based devices in assembly, primarily in the Microchip PIC18 line of microcontrollers.  I've written enough variations based on the same system that I've built a framework for my system.  My framework is essentially a little operating system, but very spartan and requires modifications to my framework files everytime I build a new device on my framework.  
+I write microcontroller based devices in assembly, primarily in the Microchip PIC18 line of microcontrollers using the MPASM compiler.  I've written enough variations based on the same system that I've built a framework for my system.  My framework is essentially a little operating system, but very spartan and requires modifications to my framework files everytime I build a new device on my framework.  
 
 For any new module that I base on my existing framework, there are sections of code that need to inserted into various places in what is essentially the operating system sections.  Currently, my process is to select a code word for the new module and then modify all the framework files to include macros related to the sections of inserted of code when the project's code word is _defined_.  
 
@@ -62,6 +62,33 @@ Thus, the general forms are:
 #INSERT (macro_name) (section_name) [priority] [macro_arg [macro_arg] [...]]
 #SECTION (section_name) [macro_arg [macro_arg] [...]]
 ```
+
+## The "GENERATE" preprocessor directive
+
+A further problem I've had with limitations in the MPASM is the inability to use the "#v(expr)" operation to generate sequential names that are passed to conditional directives.  (Section 7.4 of the MPASM user's guide.)  Thus, I added in the GENERATE directive.  
+
+This directive with its closing directive ENDGEN contains a block of code that is repeated a number of times and in each repetition, the number from the loop sequence can be substituted into the text.  The substitution variable is set between curly braces.  Currently, the code only supplies very simple substitution and the variable must be 'i'.  
+
+Thus, the general form is:  
+
+```
+#GENERATE (start_number) (end_number)
+#ENDGEN
+```
+
+The range numbers are taken as decimal integers and generate a range inclusive to both limits.  An example useage is as follows...
+
+```
+#GENERATE 5 7
+#IFDEF pin_{i}_exists
+    bcf   main_port, {i}
+#ELSE
+    bsf   register, {i}
+#ENDIF
+
+#ENDGEN
+```
+
 
 ## A "pre-preprocessor" program to handle this convention
 
