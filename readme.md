@@ -67,16 +67,21 @@ Thus, the general forms are:
 
 A further problem I've had with limitations in the MPASM is the inability to use the "#v(expr)" operation to generate sequential names that are passed to conditional directives.  (Section 7.4 of the MPASM user's guide.)  Thus, I added in the GENERATE directive.  
 
-This directive with its closing directive ENDGEN contains a block of code that is repeated a number of times and in each repetition, the number from the loop sequence can be substituted into the text.  The substitution variable is set between curly braces.  Currently, the code only supplies very simple substitution and the variable must be 'i'.  
+This directive with its closing directive ENDGEN contains a block of code that is repeated a number of times and in each repetition, the number from the loop sequence can be substituted into the text.  The substitution variable is set between curly braces.  Currently, the code only supplies basic substitution.  If the variable is a single 'i', the current count number is used.  If the variable have been DEFINEd, then that is used.  Lastly, if the variable is multiple 'i's, then the count number is extended with zeros on the front until it's as long as the length of 'i's.
 
 Thus, the general form is:  
 
 ```
 #GENERATE (start_number) (end_number)
+some code block
+some number that needs substitution here {i}
+some number {iiii} that you want to be at least four digits long
+something that has been #DEFINE'd {defined_var} goes here
+some more code
 #ENDGEN
 ```
 
-The range numbers are taken as decimal integers and generate a range inclusive to both limits.  An example useage is as follows...
+The range numbers are taken as decimal integers and generate a range inclusive to both limits.  An example usage is as follows...
 
 ```
 #GENERATE 5 7

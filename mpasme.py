@@ -277,8 +277,18 @@ def parse_file(infile, outfile, filename):
                 line2, line3 = line2.split('}', 1)
                 if line2 == 'i':     # simple substitution for current count
                   line0 = line1 + str(count2) + line3
+                elif (line2.lower() in defines) and (defines[line2.lower()]):
+                  # substitution with what's been #DEFINEd, if it exists
+                  line0 = defines[line2.lower()]
                 else:
-                  raise Exception()
+                  for char in line2:
+                    if char != 'i':
+                      raise Exception()
+                  # substitution with the count, but add leading zeros
+                  line0 = str(count2)
+                  while len(line0) < len(line2):    # pad till same length
+                    line2 = '0' + line0
+                  line0 = line1 + line0 + line3
               except:
                 outfile.write('; PRE-PREPROCESSOR ERROR: bad GENERATE data in: ' \
                               + filename + '\n')
