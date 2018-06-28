@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 '''
-Microchip MPasm assembler preprocessor.
-c2018  Trevor Marvin
+Microchip MPASM assembler preprocessor.
+c2018  Trevor Marvin  GPLv3
 
-Edit this file to contain paths to your MPasm binary below.
+Edit this file to contain paths to your MPASM binary below.
 
 The way this file is set up to run, rename the original 'mpasmx' program to
 something else, put this file in its place or link to it, and configure this
