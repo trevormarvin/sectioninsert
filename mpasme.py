@@ -142,7 +142,7 @@ def parse_file(infile, outfile, filename):
         pieces2 = line2.split()
         if len(pieces2) == 0:
           continue
-        if pieces2[0].lower() in ['#insert', '#section', ]:
+        if pieces2[0].lower() in ['#insert', '#section', '#generate', ]:
           break
       else:
         outfile.write('; PRE-PREPROCESSOR, skipping expanding included file: ' \
