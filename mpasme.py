@@ -166,8 +166,9 @@ def parse_file(infile, outfile, filename):
       outfile.write('\n')
       continue
     
-    if keyword in ['#insert', '#section', '#generate', '#secbefore', \
-                   '#secbetween', '#secafter', '#secempty', '#endsection', ]:
+    if keyword in ['#insert', '#section', '#generate', '#plicebefore', \
+                   '#splicebetween', '#spliceafter', '#spliceempty', \
+                   '#endsplice', ]:
       if len(ifstack) > 0 and False in ifstack:
         # conditional says to not compile it, so look for special preprocessor
         # directives to strip out
@@ -246,7 +247,7 @@ def parse_file(infile, outfile, filename):
                   'SPLICEBEFORE directive in file: ' + filename, \
                   file=sys.stderr)
             sys.exit(1)
-          if line.lower()[:7] == '#endsplice':
+          if line.lower()[:10] == '#endsplice':
             break
           splicebefore.append(line)
         continue
@@ -263,7 +264,7 @@ def parse_file(infile, outfile, filename):
                   'SPLICEBETWEEN directive in file: ' + filename, \
                   file=sys.stderr)
             sys.exit(1)
-          if line.lower()[:7] == '#endsplice':
+          if line.lower()[:10] == '#endsplice':
             break
           splicebetween.append(line)
         continue
@@ -280,7 +281,7 @@ def parse_file(infile, outfile, filename):
                   'SPLICEAFTER directive in file: ' + filename, \
                   file=sys.stderr)
             sys.exit(1)
-          if line.lower()[:7] == '#endsplice':
+          if line.lower()[:10] == '#endsplice':
             break
           spliceafter.append(line)
         continue
@@ -297,7 +298,7 @@ def parse_file(infile, outfile, filename):
                   'SPLICEEMPTY directive in file: ' + filename, \
                   file=sys.stderr)
             sys.exit(1)
-          if line.lower()[:7] == '#endsplice':
+          if line.lower()[:10] == '#endsplice':
             break
           spliceempty.append(line)
         continue

@@ -69,7 +69,7 @@ Sometimes there need to be chunks of code before, between, and/or after each sec
 
 The 'SPLICEBETWEEN' and 'SPLICEAFTER' directives will use the same variable expansion as the 'GENERATE' directive described below.  The {i} variable will be a sequence starting at the number one.  
 
-To define a chunk of code, use the appropriate directive to start is and then end with the '#ENDSPLICE' directive.  
+To define a chunk of code, use the appropriate directive to start and then end with the '#ENDSPLICE' directive.  Do not put any other directives intended for this preprocessing inside the splice, they will not be handled.
 
 All four splices are dumped when the 'SECTION' directive is processed so that they will not be used for another section.  Splices are not allowed to straddle between files.  
 
