@@ -34,6 +34,10 @@ for entry in sys.argv[1:]:
 def parse_file(infile, outfile, filename):
   
   global ifstack, defines, sections
+  splicebefore = []
+  splicebetween = []
+  spliceafter = []
+  spliceempty = []
   
   #for count, line in enumerate(infile.readlines()):
   count = -1
@@ -142,7 +146,9 @@ def parse_file(infile, outfile, filename):
         pieces2 = line2.split()
         if len(pieces2) == 0:
           continue
-        if pieces2[0].lower() in ['#insert', '#section', '#generate', ]:
+        if pieces2[0].lower() in ['#insert', '#section', '#generate', \
+                                  '#secbefore', '#secbetween', '#secafter', \
+                                  '#secempty', '#endsection', ]:
           break
       else:
         outfile.write('; PRE-PREPROCESSOR, skipping expanding included file: ' \
@@ -160,7 +166,8 @@ def parse_file(infile, outfile, filename):
       outfile.write('\n')
       continue
     
-    if keyword in ['#insert', '#section', '#generate', ]:
+    if keyword in ['#insert', '#section', '#generate', '#secbefore', \
+                   '#secbetween', '#secafter', '#secempty', '#endsection', ]:
       if len(ifstack) > 0 and False in ifstack:
         # conditional says to not compile it, so look for special preprocessor
         # directives to strip out
@@ -169,6 +176,7 @@ def parse_file(infile, outfile, filename):
         outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
         outfile.write('; PRE-PREPROCESSOR: ' + str(ifstack) + '\n')
         if keyword == '#generate':
+          outfile.write('; PRE-PREPROCESSOR ERROR: stripping ' + keyword + '\n')
           # need to get to the end of the GENERATE directive
           while True:
             line = infile.readline()
@@ -180,6 +188,20 @@ def parse_file(infile, outfile, filename):
                     'GENERATE directive in file: ' + filename, file=sys.stderr)
               sys.exit(1)
             if line.lower()[:7] == '#endgen':
+              break
+        if keyword in ['#secbefore', '#secbetween', '#secafter', '#secempty', ]:
+          outfile.write('; PRE-PREPROCESSOR ERROR: stripping ' + keyword + '\n')
+          # need to get to the end of the section directive
+          while True:
+            line = infile.readline()
+            count += 1
+            if len(line) == 0:
+              outfile.write('; PRE-PREPROCESSOR ERROR: did not find end of' + \
+                            ' a chunk directive in file: ' + filename + '\n')
+              print('PRE-PREPROCESSOR ERROR: did not find end of' + \
+                    ' a chunk directive in file: ' + filename, file=sys.stderr)
+              sys.exit(1)
+            if line.lower()[:7] == '#endsection':
               break
         continue
     
@@ -211,7 +233,75 @@ def parse_file(infile, outfile, filename):
         outfile.write('; PRE-PREPROCESSOR, found INSERT directive\n')
         outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
         continue
-      
+
+      elif keyword == '#splicebefore':
+        splicebefore = []
+        while True:
+          line = infile.readline()
+          count += 1
+          if len(line) == 0:
+            outfile.write('; PRE-PREPROCESSOR ERROR: did not find end of' + \
+                          'SPLICEBEFORE directive in file: ' + filename + '\n')
+            print('PRE-PREPROCESSOR ERROR: did not find end of' + \
+                  'SPLICEBEFORE directive in file: ' + filename, \
+                  file=sys.stderr)
+            sys.exit(1)
+          if line.lower()[:7] == '#endsplice':
+            break
+          splicebefore.append(line)
+        continue
+        
+      elif keyword == '#splicebetween':
+        splicebetween = []
+        while True:
+          line = infile.readline()
+          count += 1
+          if len(line) == 0:
+            outfile.write('; PRE-PREPROCESSOR ERROR: did not find end of' + \
+                          'SPLICEBETREEN directive in file: ' + filename + '\n')
+            print('PRE-PREPROCESSOR ERROR: did not find end of' + \
+                  'SPLICEBETWEEN directive in file: ' + filename, \
+                  file=sys.stderr)
+            sys.exit(1)
+          if line.lower()[:7] == '#endsplice':
+            break
+          splicebetween.append(line)
+        continue
+
+      elif keyword == '#spliceafter':
+        spliceafter = []
+        while True:
+          line = infile.readline()
+          count += 1
+          if len(line) == 0:
+            outfile.write('; PRE-PREPROCESSOR ERROR: did not find end of' + \
+                          'SPLICEAFTER directive in file: ' + filename + '\n')
+            print('PRE-PREPROCESSOR ERROR: did not find end of' + \
+                  'SPLICEAFTER directive in file: ' + filename, \
+                  file=sys.stderr)
+            sys.exit(1)
+          if line.lower()[:7] == '#endsplice':
+            break
+          spliceafter.append(line)
+        continue
+
+      elif keyword == '#spliceempty':
+        spliceempty = []
+        while True:
+          line = infile.readline()
+          count += 1
+          if len(line) == 0:
+            outfile.write('; PRE-PREPROCESSOR ERROR: did not find end of' + \
+                          'SPLICEEMPTY directive in file: ' + filename + '\n')
+            print('PRE-PREPROCESSOR ERROR: did not find end of' + \
+                  'SPLICEEMPTY directive in file: ' + filename, \
+                  file=sys.stderr)
+            sys.exit(1)
+          if line.lower()[:7] == '#endsplice':
+            break
+          spliceempty.append(line)
+        continue
+        
       elif keyword == '#section':
         # form of: #SECTION (section_name) [macro_args] [...]
         sectionName = pieces[1].lower()
@@ -220,6 +310,10 @@ def parse_file(infile, outfile, filename):
                 sectionName, file=sys.stderr)
           outfile.write('; PRE-PREPROCESSOR, WARNING, nothing found for SECTION directive\n')
           outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
+          if spliceempty:
+            outfile.write('; PRE-PREPROCESSOR: empty splice section\n')
+            for line in spliceempty:
+              outfile.write(line)
         else:
           outfile.write('; PRE-PREPROCESSOR, found SECTION directive\n')
           outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
@@ -227,6 +321,11 @@ def parse_file(infile, outfile, filename):
             macro_args = ' ' + ' '.join(pieces[2:])
           else:
             macro_args = ''
+          
+          for line in splicebefore:
+            outfile.write(line)
+          count2 = 1
+          
           while sections[sectionName]:
             macro, args = heapq.heappop(sections[sectionName])[1:]
             outfile.write('; PRE-PREPROCESSOR: section: ' + sectionName + \
@@ -235,8 +334,20 @@ def parse_file(infile, outfile, filename):
               outfile.write('\t' + macro + ' ' + ', '.join(args) + '\n')
             else:       # args taken from the SECTION directive
               outfile.write('\t' + macro + macro_args + '\n')
+            if len(sections[sectionName]):
+              for line in splicebetween:
+                outfile.write(substitute(line, count2, filename))
+            count2 += 1
+          
+          for line in spliceafter:
+            outfile.write(substitute(line, count2, filename))
+        
         sections[sectionName] = None
         completed_sections[sectionName] = filename
+        splicebefore = []
+        splicebetween = []
+        spliceafter = []
+        spliceempty = []
         continue
     
       if keyword == '#generate':
@@ -270,36 +381,7 @@ def parse_file(infile, outfile, filename):
         
         for count2 in range(fromcount, tocount + 1):
           for line in section:
-            line0 = line
-            while ('{' in line0) and ('}' in line0):
-              try:
-                line1, line2 = line0.split('{', 1)
-                line2, line3 = line2.split('}', 1)
-                if line2 == 'i':     # simple substitution for current count
-                  line0 = line1 + str(count2) + line3
-                elif (line2.lower() in defines) and (defines[line2.lower()]):
-                  # substitution with what's been #DEFINEd, if it exists
-                  line0 = defines[line2.lower()]
-                else:
-                  for char in line2:
-                    if char != 'i':
-                      raise Exception()
-                  # substitution with the count, but add leading zeros
-                  line0 = str(count2)
-                  while len(line0) < len(line2):    # pad till same length
-                    line2 = '0' + line0
-                  line0 = line1 + line0 + line3
-              except:
-                outfile.write('; PRE-PREPROCESSOR ERROR: bad GENERATE data in: ' \
-                              + filename + '\n')
-                outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
-                print('PRE-PREPROCESSOR ERROR: bad GENERATE data in file: ' + \
-                      filename, file=sys.stderr)
-                print('PRE-PREPROCESSOR: line: ' + line.strip(), \
-                      file=sys.stderr)
-                sys.exit(1)
-            else:
-              outfile.write(line0)
+            outfile.write(substitute(line, count2, filename))
       
       continue
     
@@ -309,7 +391,40 @@ def parse_file(infile, outfile, filename):
   infile.close()
     
     
-    
+# ----------------------------------------------
+def substitute(line0, count2, filename):
+
+  while ('{' in line0) and ('}' in line0):
+    try:
+      line1, line2 = line0.split('{', 1)
+      line2, line3 = line2.split('}', 1)
+      if line2 == 'i':     # simple substitution for current count
+        line0 = line1 + str(count2) + line3
+      elif (line2.lower() in defines) and (defines[line2.lower()]):
+        # substitution with what's been #DEFINEd, if it exists
+        line0 = defines[line2.lower()]
+      else:
+        for char in line2:
+          if char != 'i':
+            raise Exception()
+        # substitution with the count, but add leading zeros
+        line0 = str(count2)
+        while len(line0) < len(line2):    # pad till same length
+          line2 = '0' + line0
+        line0 = line1 + line0 + line3
+    except:
+      outfile.write('; PRE-PREPROCESSOR ERROR: bad substitution ' + \
+                    'data in: ' + filename + '\n')
+      outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
+      print('PRE-PREPROCESSOR ERROR: bad substitution data in ' + \
+            'file: ' + filename, file=sys.stderr)
+      print('PRE-PREPROCESSOR: line: ' + line.strip(), \
+            file=sys.stderr)
+      sys.exit(1)
+  
+  return line0
+
+
 # -----------------------------------------------------------------------------
 
 if not inputfilename:

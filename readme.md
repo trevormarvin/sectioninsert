@@ -63,6 +63,17 @@ Thus, the general forms are:
 #SECTION (section_name) [macro_arg [macro_arg] [...]]
 ```
 
+## Advanced "SECTION" directives, the "SPLICE" directives
+
+Sometimes there need to be chunks of code before, between, and/or after each section inserted.  When that is the case, use the "SPLICEBEFORE", "SPLICBETWEEN", and "SPLICEAFTER" directives.  These allow insertion of code chunks that are placed interlaced with the sections.  If there is nothing in the section list, then the "SPLICEEMPTY" can be used to insert a chunk of code that will be inserted.  
+
+The 'SPLICEBETWEEN' and 'SPLICEAFTER' directives will use the same variable expansion as the 'GENERATE' directive described below.  The {i} variable will be a sequence starting at the number one.  
+
+To define a chunk of code, use the appropriate directive to start is and then end with the '#ENDSPLICE' directive.  
+
+All four splices are dumped when the 'SECTION' directive is processed so that they will not be used for another section.  Splices are not allowed to straddle between files.  
+
+
 ## The "GENERATE" preprocessor directive
 
 A further problem I've had with limitations in the MPASM is the inability to use the "#v(expr)" operation to generate sequential names that are passed to conditional directives.  (Section 7.4 of the MPASM user's guide.)  Thus, I added in the GENERATE directive.  
