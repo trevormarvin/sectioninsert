@@ -166,7 +166,7 @@ def parse_file(infile, outfile, filename):
       outfile.write('\n')
       continue
     
-    if keyword in ['#insert', '#section', '#generate', '#plicebefore', \
+    if keyword in ['#insert', '#section', '#generate', '#splicebefore', \
                    '#splicebetween', '#spliceafter', '#spliceempty', \
                    '#endsplice', ]:
       if len(ifstack) > 0 and False in ifstack:
