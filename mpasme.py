@@ -190,7 +190,8 @@ def parse_file(infile, outfile, filename):
               sys.exit(1)
             if line.lower()[:7] == '#endgen':
               break
-        if keyword in ['#secbefore', '#secbetween', '#secafter', '#secempty', ]:
+        if keyword in ['#splicebefore', '#splicebetween', '#spliceafter', \
+                       '#spliceempty', '#endsplice', ]:
           outfile.write('; PRE-PREPROCESSOR ERROR: stripping ' + keyword + '\n')
           # need to get to the end of the section directive
           while True:
@@ -198,11 +199,11 @@ def parse_file(infile, outfile, filename):
             count += 1
             if len(line) == 0:
               outfile.write('; PRE-PREPROCESSOR ERROR: did not find end of' + \
-                            ' a chunk directive in file: ' + filename + '\n')
+                            ' a splice directive in file: ' + filename + '\n')
               print('PRE-PREPROCESSOR ERROR: did not find end of' + \
-                    ' a chunk directive in file: ' + filename, file=sys.stderr)
+                    ' a splice directive in file: ' + filename, file=sys.stderr)
               sys.exit(1)
-            if line.lower()[:7] == '#endsection':
+            if line.lower()[:7] == '#endsplice':
               break
         continue
     
