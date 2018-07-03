@@ -224,7 +224,15 @@ def parse_file(infile, outfile, filename):
         else:
           sections[sectionName] = []
         if len(pieces) > 3:
-          priority = float(pieces[3])
+          try:
+            priority = float(pieces[3])
+          except ValueError:
+            outfile.write('; PRE-PREPROCESSOR, bad priority value\n')
+            outfile.write(line)
+            print('PRE-PREPROCESSOR ERROR: bad priority value in: ' + \
+                  filename + ' at line: ' + str(count), file=sys.stderr)
+            print('PRE-PREPROCESSOR ERROR: ' + line, file=sys.stderr)
+            sys.exit(1)
         else:
           priority = 100.0
         if len(pieces) > 4:
@@ -417,10 +425,10 @@ def substitute(line0, count2, filename):
     except:
       outfile.write('; PRE-PREPROCESSOR ERROR: bad substitution ' + \
                     'data in: ' + filename + '\n')
-      outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
+      outfile.write('; PRE-PREPROCESSOR: ' + line0.strip() + '\n')
       print('PRE-PREPROCESSOR ERROR: bad substitution data in ' + \
             'file: ' + filename, file=sys.stderr)
-      print('PRE-PREPROCESSOR: line: ' + line.strip(), \
+      print('PRE-PREPROCESSOR: line: ' + line0.strip(), \
             file=sys.stderr)
       sys.exit(1)
   
