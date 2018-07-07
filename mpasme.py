@@ -147,8 +147,9 @@ def parse_file(infile, outfile, filename):
         if len(pieces2) == 0:
           continue
         if pieces2[0].lower() in ['#insert', '#section', '#generate', \
-                                  '#secbefore', '#secbetween', '#secafter', \
-                                  '#secempty', '#endsection', ]:
+                                  '#splicebefore', '#splicebetween', \
+                                  '#spliceafter', '#spliceempty', \
+                                  '#endsplice', ]:
           break
       else:
         outfile.write('; PRE-PREPROCESSOR, skipping expanding included file: ' \
@@ -191,7 +192,7 @@ def parse_file(infile, outfile, filename):
             if line.lower()[:7] == '#endgen':
               break
         if keyword in ['#splicebefore', '#splicebetween', '#spliceafter', \
-                       '#spliceempty', '#endsplice', ]:
+                       '#spliceempty', ]:
           outfile.write('; PRE-PREPROCESSOR ERROR: stripping ' + keyword + '\n')
           # need to get to the end of the section directive
           while True:
@@ -203,10 +204,10 @@ def parse_file(infile, outfile, filename):
               print('PRE-PREPROCESSOR ERROR: did not find end of' + \
                     ' a splice directive in file: ' + filename, file=sys.stderr)
               sys.exit(1)
-            if line.lower()[:7] == '#endsplice':
+            if line.lower()[:10] == '#endsplice':
               break
         continue
-    
+      
       elif keyword == '#insert':
         # form of: #INSERT (macro_name) (section_name) [priority] [macro_arg]...
         sectionName = pieces[2].lower()
@@ -243,7 +244,7 @@ def parse_file(infile, outfile, filename):
         outfile.write('; PRE-PREPROCESSOR, found INSERT directive\n')
         outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
         continue
-
+      
       elif keyword == '#splicebefore':
         splicebefore = []
         while True:
