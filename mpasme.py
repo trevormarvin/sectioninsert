@@ -189,7 +189,8 @@ def parse_file(infile, outfile, filename):
               print('PRE-PREPROCESSOR ERROR: did not find end of' + \
                     'GENERATE directive in file: ' + filename, file=sys.stderr)
               sys.exit(1)
-            if line.split()[0].lower() == '#endgen':
+            if len(line.split()) > 0 and \
+               line.split()[0].lower() == '#endgen':
               break
         if keyword in ['#splicebefore', '#splicebetween', '#spliceafter', \
                        '#spliceempty', ]:
@@ -204,7 +205,8 @@ def parse_file(infile, outfile, filename):
               print('PRE-PREPROCESSOR ERROR: did not find end of' + \
                     ' a splice directive in file: ' + filename, file=sys.stderr)
               sys.exit(1)
-            if line.split()[0].lower() == '#endsplice':
+            if len(line.split()) > 0 and \
+               line.split()[0].lower() == '#endsplice':
               break
         continue
       
@@ -257,7 +259,8 @@ def parse_file(infile, outfile, filename):
                   'SPLICEBEFORE directive in file: ' + filename, \
                   file=sys.stderr)
             sys.exit(1)
-          if line.split()[0].lower() == '#endsplice':
+          if len(line.split()) > 0 and \
+             line.split()[0].lower() == '#endsplice':
             break
           splicebefore.append(line)
         continue
@@ -274,7 +277,8 @@ def parse_file(infile, outfile, filename):
                   'SPLICEBETWEEN directive in file: ' + filename, \
                   file=sys.stderr)
             sys.exit(1)
-          if line.split()[0].lower() == '#endsplice':
+          if len(line.split()) > 0 and \
+             line.split()[0].lower() == '#endsplice':
             break
           splicebetween.append(line)
         continue
@@ -291,7 +295,8 @@ def parse_file(infile, outfile, filename):
                   'SPLICEAFTER directive in file: ' + filename, \
                   file=sys.stderr)
             sys.exit(1)
-          if line.split()[0].lower() == '#endsplice':
+          if len(line.split()) > 0 and \
+             line.split()[0].lower() == '#endsplice':
             break
           spliceafter.append(line)
         continue
@@ -308,7 +313,8 @@ def parse_file(infile, outfile, filename):
                   'SPLICEEMPTY directive in file: ' + filename, \
                   file=sys.stderr)
             sys.exit(1)
-          if line.split()[0].lower() == '#endsplice':
+          if len(line.split()) > 0 and \
+             line.split()[0].lower() == '#endsplice':
             break
           spliceempty.append(line)
         continue
@@ -386,7 +392,8 @@ def parse_file(infile, outfile, filename):
             print('PRE-PREPROCESSOR ERROR: did not find end of' + \
                   'GENERATE directive in file: ' + filename, file=sys.stderr)
             sys.exit(1)
-          if line.split()[0].lower() == '#endgen':
+          if len(line.split()) > 0 and \
+             line.split()[0].lower() == '#endgen':
             break
           section.append(line)
         

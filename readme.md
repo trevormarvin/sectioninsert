@@ -105,7 +105,6 @@ The range numbers are taken as decimal integers and generate a range inclusive t
 #ENDGEN
 ```
 
-
 ## A "pre-preprocessor" program to handle this convention
 
 Until this convention can included in an official assembler, this project is to build a pre-preprocessor that interprets and replaces these directives so that the official assembler for any particular architecture can be used with this functionality.  
