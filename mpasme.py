@@ -30,8 +30,97 @@ for entry in sys.argv[1:]:
   break
 
 # -----------------------------------------------------------------------------
+def parse_line(line):
+  
+    # doing this again, because the function may be called inside #GENERATE
+    if ';' in line:
+      pieces = line.split(';', 1)[0].split()  # remove comment
+    else:
+      pieces = line.split()
+    if len(pieces) == 0:
+      outfile.write(line)
+      return True
+    keyword = pieces[0].lower()
+    
+    # now ready to look for a recognized keywork
+    if keyword == '#endif':
+      if len(ifstack) == 0:
+        print('unmatched ENDIF directive in ' + filename, file=sys.stderr)
+        errfile.write('unmatched ENDIF directive in file ' + filename + \
+                      ' at line ' + str(count) + '\n')
+        sys.exit(1)
+      ifstack.pop()
+      outfile.write(line)
+      return True
 
-def parse_file(infile, outfile, filename):
+    if keyword == '#else':
+      if len(ifstack) == 0:
+        print('unmatched ELSE directive in ' + filename, file=sys.stderr)
+        errfile.write('unmatched ELSE directive in file ' + filename + \
+                      ' at line ' + str(count) + '\n')
+        sys.exit(1)
+      index = len(ifstack) - 1
+      if ifstack[index] is True:
+        ifstack[index] = False
+      elif ifstack[index] is False:
+        ifstack[index] = True
+      return True
+    
+    if keyword == '#if':
+      ifstack.append(None)
+      outfile.write(line)
+      return True
+    
+    if keyword == '#ifdef':
+      if pieces[1].lower() in defines:
+        ifstack.append(True)
+      else:
+        ifstack.append(False)
+      outfile.write(line)
+      return True
+    
+    if keyword == '#ifndef':
+      if pieces[1].lower() in defines:
+        ifstack.append(False)
+      else:
+        ifstack.append(True)
+      outfile.write(line)
+      return True
+    
+    if keyword == '#define':
+      if len(pieces) > 2:
+        defines[pieces[1].lower()] = pieces[2]
+      else:
+        defines[pieces[1].lower()] = None
+      outfile.write('; PRE-PREPROCESSOR, caught #DEFINE: ' + \
+                    pieces[1].lower() + '\n')
+      outfile.write(line)
+      return True
+
+    # special case for catching 'set' and 'equ' function
+    if (len(pieces) > 2) and (pieces[1].lower() in ['set', 'equ', ]):
+      value = ' '.join(pieces[2:]).strip()
+      if ';' in value:
+        value = value.split(';')[0].strip()
+      defines[pieces[0].lower()] = value
+      outfile.write("; PRE-PREPROCESSOR, caught 'set' or 'equ': " + \
+                    pieces[0].lower() + '\n')
+      outfile.write(line)
+      return True
+    
+    if keyword == '#undefine':
+      if pieces[1].lower() in defines:
+        del defines[pieces[1].lower()]
+      outfile.write('; PRE-PREPROCESSOR, caught #UNDEFINE: ' + \
+                    pieces[1].lower() + '\n')
+      outfile.write(line)
+      return True
+    
+    return False
+
+
+# -------------------------------------------
+def parse_file(infile, filename):
   
   global ifstack, defines, sections
   splicebefore = []
@@ -67,61 +156,7 @@ def parse_file(infile, outfile, filename):
       errfile.write('- line: ' + line + '\n')
       sys.exit(1)
     
-    if keyword == '#endif':
-      if len(ifstack) == 0:
-        print('unmatched ENDIF directive in ' + filename, file=sys.stderr)
-        errfile.write('unmatched ENDIF directive in file ' + filename + \
-                      ' at line ' + str(count) + '\n')
-        sys.exit(1)
-      ifstack.pop()
-      outfile.write(line)
-      continue
-
-    if keyword == '#else':
-      if len(ifstack) == 0:
-        print('unmatched ELSE directive in ' + filename, file=sys.stderr)
-        errfile.write('unmatched ELSE directive in file ' + filename + \
-                      ' at line ' + str(count) + '\n')
-        sys.exit(1)
-      index = len(ifstack) - 1
-      if ifstack[index] is True:
-        ifstack[index] = False
-      elif ifstack[index] is False:
-        ifstack[index] = True
-    
-    if keyword == '#if':
-      ifstack.append(None)
-      outfile.write(line)
-      continue
-    
-    if keyword == '#ifdef':
-      if pieces[1].lower() in defines:
-        ifstack.append(True)
-      else:
-        ifstack.append(False)
-      outfile.write(line)
-      continue
-    
-    if keyword == '#ifndef':
-      if pieces[1].lower() in defines:
-        ifstack.append(False)
-      else:
-        ifstack.append(True)
-      outfile.write(line)
-      continue
-    
-    if keyword == '#define':
-      if len(pieces) > 2:
-        defines[pieces[1].lower()] = pieces[2]
-      else:
-        defines[pieces[1].lower()] = None
-      outfile.write(line)
-      continue
-
-    if keyword == '#undefine':
-      if pieces[1].lower() in defines:
-        del defines[pieces[1].lower()]
-      outfile.write(line)
+    if parse_line(line):
       continue
     
     if keyword == '#include':
@@ -159,7 +194,7 @@ def parse_file(infile, outfile, filename):
       recfile.seek(0)
       outfile.write('; PRE-PREPROCESSOR, including: ' + recfn + '\n')
       stack_balance = len(ifstack)
-      parse_file(recfile, outfile, recfn)
+      parse_file(recfile, recfn)
       if len(ifstack) != stack_balance:
         print('PRE SERIOUS WARNING: conditional stack length altered after ' + \
               'INCLUDE directive in file: ' + recfn, file=sys.stderr)
@@ -178,7 +213,7 @@ def parse_file(infile, outfile, filename):
         outfile.write('; PRE-PREPROCESSOR: ' + line.strip() + '\n')
         outfile.write('; PRE-PREPROCESSOR: ' + str(ifstack) + '\n')
         if keyword == '#generate':
-          outfile.write('; PRE-PREPROCESSOR ERROR: stripping ' + keyword + '\n')
+          outfile.write('; PRE-PREPROCESSOR: stripping ' + keyword + '\n')
           # need to get to the end of the GENERATE directive
           while True:
             line = infile.readline()
@@ -194,7 +229,7 @@ def parse_file(infile, outfile, filename):
               break
         if keyword in ['#splicebefore', '#splicebetween', '#spliceafter', \
                        '#spliceempty', ]:
-          outfile.write('; PRE-PREPROCESSOR ERROR: stripping ' + keyword + '\n')
+          outfile.write('; PRE-PREPROCESSOR: stripping ' + keyword + '\n')
           # need to get to the end of the section directive
           while True:
             line = infile.readline()
@@ -340,6 +375,8 @@ def parse_file(infile, outfile, filename):
             macro_args = ''
           
           for line in splicebefore:
+            if parse_line(line):
+              continue
             outfile.write(line)
           count2 = 1
           
@@ -353,11 +390,17 @@ def parse_file(infile, outfile, filename):
               outfile.write('\t' + macro + macro_args + '\n')
             if len(sections[sectionName]):
               for line in splicebetween:
-                outfile.write(substitute(line, count2, filename))
+                line = substitute(line, count2, filename)
+                if parse_line(line):
+                  continue
+                outfile.write(line)
             count2 += 1
           
           for line in spliceafter:
-            outfile.write(substitute(line, count2, filename))
+            line = substitute(line, count2, filename)
+            if parse_line(line):
+              continue
+            outfile.write(line)
         
         sections[sectionName] = None
         completed_sections[sectionName] = filename
@@ -399,7 +442,10 @@ def parse_file(infile, outfile, filename):
         
         for count2 in range(fromcount, tocount + 1):
           for line in section:
-            outfile.write(substitute(line, count2, filename))
+            line = substitute(line, count2, filename)
+            if parse_line(line):
+              continue
+            outfile.write(line)
       
       continue
     
@@ -477,7 +523,7 @@ except Exception as msg:
   print("failed to create error file, error: " + str(msg))
   sys.exit(1)
 
-parse_file(infile, outfile, inputfilename)
+parse_file(infile, inputfilename)
 
 outfile.close()
 
