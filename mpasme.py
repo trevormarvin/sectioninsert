@@ -115,12 +115,27 @@ def parse_file(infile, outfile, filename):
         defines[pieces[1].lower()] = pieces[2]
       else:
         defines[pieces[1].lower()] = None
+      outfile.write('; PRE-PREPROCESSOR, caught #DEFINE: ' + \
+                    pieces[1].lower() + '\n')
+      outfile.write(line)
+      continue
+
+    # special case for catching 'set' and 'equ' function
+    if (len(pieces) > 2) and (pieces[1].lower() in ['set', 'equ', ]):
+      value = ' '.join(pieces[2:]).strip()
+      if ';' in value:
+        value = value.split(';')[0].strip()
+      defines[pieces[0].lower()] = value
+      outfile.write("; PRE-PREPROCESSOR, caught 'set' or 'equ': " + \
+                    pieces[0].lower() + '\n')
       outfile.write(line)
       continue
 
     if keyword == '#undefine':
       if pieces[1].lower() in defines:
         del defines[pieces[1].lower()]
+      outfile.write('; PRE-PREPROCESSOR, caught #UNDEFINE: ' + \
+                    pieces[1].lower() + '\n')
       outfile.write(line)
       continue
     
