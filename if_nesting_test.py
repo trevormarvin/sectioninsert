@@ -18,7 +18,6 @@ ifnest = []
 defines = {}
 sections = {}
 completed_sections = {}
-mpasm_prog = '/opt/microchip/mplabx/v4.20/mpasmx/mpasmx_orig'
 inputfilename = '_pre_processed_file.asm'
 
 for entry in sys.argv[1:]:
@@ -39,7 +38,8 @@ def test_ifnest(line, filename, count):
     for line, filename, count in ifnest:
       print('- file: ' + filename + ':' + str(count) + ' ' + line, \
             file=sys.stderr)
-
+  
+  print('    ' * len(ifnest) + line, file=sys.stderr)
 
 # -----------------------------------------------
 def parse_file(infile, filename):
