@@ -161,6 +161,8 @@ def parse_file(infile, outfile, filename):
         pieces2 = line2.split()
         if len(pieces2) == 0:
           continue
+        if pieces2[0].lower() == ';#sectioninsert_force_expansion':
+          break
         if pieces2[0].lower() in ['#insert', '#section', '#generate', \
                                   '#splicebefore', '#splicebetween', \
                                   '#spliceafter', '#spliceempty', \
