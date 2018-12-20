@@ -6,11 +6,11 @@
 
 I write microcontroller based devices in assembly, primarily in the Microchip PIC18 line of microcontrollers using the MPASM compiler.  I've written enough variations based on the same system that I've built a framework for my system.  My framework is essentially a little operating system, but very spartan and requires modifications to my framework files everytime I build a new device on my framework.  
 
-For any new module that I base on my existing framework, there are sections of code that need to inserted into various places in what is essentially the operating system sections.  Currently, my process is to select a code word for the new module and then modify all the framework files to include macros related to the sections of inserted of code when the project's code word is _defined_.  
+For any new module that I base on my existing framework, there are sections of code that need to inserted into various places in what is essentially the operating system sections.  My process had been to select a code word for the new module and then modify all the framework files to include macros related to the sections of inserted of code when the project's code word is _defined_.  
 
-A tedious problem in this approach is that I have to modify my base framework files for every new module I create.  Since these framework files are shared with all existing projects, I have to be careful to not break previous projects.  
+A tedious problem in this approach was that I had to modify my base framework files for every new module I created.  Since these framework files are shared with all existing projects, I had to be careful to not break previous projects with modifications to the files they relied on.  
 
-To steamline and improve scaleability of this process, I propose the following preprocessor mechanism...  
+To steamline and improve scaleability of this process, I created the following preprocessor mechanism...  
 
 ## The "SECTION" preprocessor directive
 

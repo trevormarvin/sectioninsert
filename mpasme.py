@@ -19,7 +19,7 @@ ifstack = []
 defines = {}
 sections = {}
 completed_sections = {}
-mpasm_prog = '/opt/microchip/mplabx/v4.20/mpasmx/mpasmx_orig'
+mpasm_prog = '/opt/microchip/mplabx/v5.05/mpasmx/mpasmx_orig'
 interim_file = '_pre_processed_file.asm'
 inputfilename = None
 
@@ -111,6 +111,10 @@ def parse_file(infile, outfile, filename):
       continue
     
     if keyword == '#define':
+      if len(ifstack) > 0 and False in ifstack:
+        outfile.write('; PRE-PREPROCESSOR, skipping define directive due to condition stack\n')
+        outfile.write(line)
+        continue
       if len(pieces) > 2:
         defines[pieces[1].lower()] = pieces[2]
       else:
